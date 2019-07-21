@@ -1,124 +1,105 @@
-""" Starter code for simple logistic regression model for MNIST
-with tf.data module
-MNIST dataset: yann.lecun.com/exdb/mnist/
-Created by Chip Huyen (chiphuyen@cs.stanford.edu)
+""" Starter code for simple linear regression example using placeholders
+Created by Chip Huyen (huyenn@cs.stanford.edu)
 CS20: "TensorFlow for Deep Learning Research"
 cs20.stanford.edu
 Lecture 03
 """
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
+import time
 
 import numpy as np
+import matplotlib.pyplot as plt
 import tensorflow as tf
-import time
 
 import utils
 
-# Define paramaters for the model
-learning_rate = 0.01
-batch_size = 128
-n_epochs = 30
-n_train = 60000
-n_test = 10000
+def hubor_loss(pred_tensor, label_tensor, delta = 14.0):
+    res_tensor = tf.abs(pred_tensor - label_tensor)
+    def l2(): return 0.5 * tf.square(res_tensor)
+    def l1(): return delta * res_tensor - 0.5 * tf.square(delta)
+    return tf.cond(res_tensor < delta, l2, l1)
 
-# Step 1: Read in data
-mnist_folder = 'data/mnist'
-utils.download_mnist(mnist_folder)
-train, val, test = utils.read_mnist(mnist_folder, flatten=True)
+DATA_FILE = 'data/birth_life_2010.txt'
 
-# Step 2: Create datasets and iterator
-# create training Dataset and batch it
-train_data = tf.data.Dataset.from_tensor_slices(train)
-train_data = train_data.shuffle(10000) # if you want to shuffle your data
-train_data = train_data.batch(batch_size)
+# Step 1: read in data from the .txt file
+data, n_samples = utils.read_birth_life_data(DATA_FILE)
 
-# create testing Dataset and batch it
-test_data = None
+# Step 2: create placeholders for X (birth rate) and Y (life expectancy)
+# Remember both X and Y are scalars with type float
+X, Y = tf.placeholder(dtype=tf.float32), tf.placeholder(dtype=tf.float32)
 #############################
 ########## TO DO ############
 #############################
 
+# Step 3: create weight and bias, initialized to 0.0
+# Make sure to use tf.get_variable
+w = tf.get_variable(initializer = tf.constant(0.0), name = 'weight')
+b = tf.get_variable(initializer = tf.constant(0.0), name = 'bias')
 
-# create one iterator and initialize it with different datasets
-iterator = tf.data.Iterator.from_structure(train_data.output_types, 
-                                           train_data.output_shapes)
-img, label = iterator.get_next()
-
-train_init = iterator.make_initializer(train_data)	# initializer for train_data
-test_init = iterator.make_initializer(test_data)	# initializer for train_data
-
-# Step 3: create weights and bias
-# w is initialized to random variables with mean of 0, stddev of 0.01
-# b is initialized to 0
-# shape of w depends on the dimension of X and Y so that Y = tf.matmul(X, w)
-# shape of b depends on Y
-w, b = None, None
 #############################
 ########## TO DO ############
 #############################
 
-
-# Step 4: build model
-# the model that returns the logits.
-# this logits will be later passed through softmax layer
-logits = None
+# Step 4: build model to predict Y
+# e.g. how would you derive at Y_predicted given X, w, and b
+Y_predicted = tf.add(tf.multiply(X, w), b)
 #############################
 ########## TO DO ############
 #############################
 
-
-# Step 5: define loss function
-# use cross entropy of softmax of logits as the loss function
-loss = None
+# Step 5: use the square error as the loss function
+#loss = tf.square(Y - Y_predicted, name = 'loss')
+loss = hubor_loss(Y_predicted, Y)
 #############################
 ########## TO DO ############
 #############################
 
+# Step 6: using gradient descent with learning rate of 0.001 to minimize loss
+optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.001).minimize(loss)
+start = time.time()
 
-# Step 6: define optimizer
-# using Adamn Optimizer with pre-defined learning rate to minimize loss
-optimizer = None
+# Create a filewriter to write the model's graph to TensorBoard
 #############################
 ########## TO DO ############
 #############################
 
-
-# Step 7: calculate accuracy with test set
-preds = tf.nn.softmax(logits)
-correct_preds = tf.equal(tf.argmax(preds, 1), tf.argmax(label, 1))
-accuracy = tf.reduce_sum(tf.cast(correct_preds, tf.float32))
-
-writer = tf.summary.FileWriter('./graphs/logreg', tf.get_default_graph())
 with tf.Session() as sess:
-   
-    start_time = time.time()
-    sess.run(tf.global_variables_initializer())
-
-    # train the model n_epochs times
-    for i in range(n_epochs): 	
-        sess.run(train_init)	# drawing samples from train_data
+    writer = tf.summary.FileWriter('./graphs/linear_reg', sess.graph)
+    # Step 7: initialize the necessary variables, in this case, w and b
+    #############################
+    ########## TO DO ############
+    #############################
+    sess.run(tf.variables_initializer([w,b]))
+    # Step 8: train the model for 100 epochs
+    for i in range(100):
         total_loss = 0
-        n_batches = 0
-        try:
-            while True:
-                _, l = sess.run([optimizer, loss])
-                total_loss += l
-                n_batches += 1
-        except tf.errors.OutOfRangeError:
-            pass
-        print('Average loss epoch {0}: {1}'.format(i, total_loss/n_batches))
-    print('Total time: {0} seconds'.format(time.time() - start_time))
+        for x, y in data:
+            # Execute train_op and get the value of loss.
+            # Don't forget to feed in data for placeholders
+            _, loss_ = sess.run([optimizer, loss], feed_dict={X:x, Y:y})
+            total_loss += loss_
 
-    # test the model
-    sess.run(test_init)			# drawing samples from test_data
-    total_correct_preds = 0
-    try:
-        while True:
-            accuracy_batch = sess.run(accuracy)
-            total_correct_preds += accuracy_batch
-    except tf.errors.OutOfRangeError:
-        pass
+        print('Epoch {0}: {1}'.format(i, total_loss/n_samples))
 
-    print('Accuracy {0}'.format(total_correct_preds/n_test))
-writer.close()
+    # close the writer when you're done using it
+    #############################
+    ########## TO DO ############
+    #############################
+    
+    writer.close()
+    
+    # Step 9: output the values of w and b
+    w_out, b_out = w.eval(), b.eval()
+    #############################
+    ########## TO DO ############
+    #############################
+
+print('Took: %f seconds' %(time.time() - start))
+
+# uncomment the following lines to see the plot 
+plt.plot(data[:,0], data[:,1], 'bo', label='Real data')
+plt.plot(data[:,0], data[:,0] * w_out + b_out, 'r', label='Predicted data')
+plt.legend()
+#plt.show()
+plt.savefig('fig/linear_regression_birth.jpg')

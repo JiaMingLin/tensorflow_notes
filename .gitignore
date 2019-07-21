@@ -1,3 +1,7 @@
+alexnet/data/*
+logs/*
+graphs/*
+fig/*
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
