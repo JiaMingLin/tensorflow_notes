@@ -21,7 +21,7 @@ def __unflatten_image__(img_flat):
     img_G = img_flat[1024:2048].reshape((32, 32))
     img_B = img_flat[2048:3072].reshape((32, 32))
     img = np.dstack((img_R, img_G, img_B))
-    return img
+    return img/255
 
 def __extract_reshape_file__(fname):
     res = []
@@ -48,6 +48,8 @@ class Cifar(object):
         self.__batch_num__ = 0
         for i in range(math.ceil(len(self.__res__)/batch_size)):
             self.batches.append(self.__res__[i*batch_size:(i+1)*batch_size])
+            
+        self.test_set = __extract_reshape_file__(os.path.join(dir, "test_batch")) # <- Added for test data
 
     def batch(self, num):
         return self.batches[num]

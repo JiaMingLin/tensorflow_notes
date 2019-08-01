@@ -1,3 +1,6 @@
+alexnet/logs/*
+alexnet/saved_model/*
+alexnet/pretrained/*
 alexnet/data/*
 logs/*
 graphs/*
