@@ -1,20 +1,15 @@
-import os
-import pickle
-import math
 import numpy as np
+import pickle
+import os
+import math
+import helper
 
 
 def __extract_file__(fname):
-    '''
-    Read data from pickle
-    Args:
-        1. fname: pickle file name
-    Return
-        1. 
-    '''
     with open(fname, 'rb') as fo:
         d = pickle.load(fo, encoding='bytes')
     return d
+
 
 def __unflatten_image__(img_flat):
     img_R = img_flat[0:1024].reshape((32, 32))
@@ -22,6 +17,7 @@ def __unflatten_image__(img_flat):
     img_B = img_flat[2048:3072].reshape((32, 32))
     img = np.dstack((img_R, img_G, img_B))
     return img/255
+
 
 def __extract_reshape_file__(fname):
     res = []
@@ -32,12 +28,14 @@ def __extract_reshape_file__(fname):
         res.append((__unflatten_image__(image), label))
     return res
 
+
 def get_images_from(dir):
     files = [f for f in os.listdir(dir) if f.startswith("data_batch")]
     res = []
     for f in files:
         res = res + __extract_reshape_file__(os.path.join(dir, f))
     return res
+
 
 class Cifar(object):
 
@@ -48,8 +46,7 @@ class Cifar(object):
         self.__batch_num__ = 0
         for i in range(math.ceil(len(self.__res__)/batch_size)):
             self.batches.append(self.__res__[i*batch_size:(i+1)*batch_size])
-            
-        self.test_set = __extract_reshape_file__(os.path.join(dir, "test_batch")) # <- Added for test data
+        self.test_set = __extract_reshape_file__(os.path.join(dir, "test_batch"))
 
     def batch(self, num):
         return self.batches[num]
@@ -60,7 +57,17 @@ class Cifar(object):
             self.__batch_num__ = self.__batch_num__ + 1
         else:
             res = []
+
         return res
 
     def reset_batch(self):
         self.__batch_num__ = 0
+    def no_of_batches(self):
+        return len(self.batches)
+        
+    def create_resized_test_set(self, new_size=(224, 224), dim=1000):
+        self.test_set = helper.transform_to_input_output_and_pad(self.test_set, new_size=new_size, dim=dim)
+
+    def create_resized_batches(self, new_size=(224, 224), dim=1000):
+        self.resized_batches = [helper.transform_to_input_output_and_pad(batch, new_size=new_size, dim=dim) for batch in tqdm(self.batches, desc="Reshaping")]
+        self.create_resized_test_set(new_size, dim)
